@@ -342,3 +342,71 @@ fieldset.field legend {
 .detail-grid dd {
   margin: 0;
 }
+
+.btn-secondary {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(127, 127, 127, 0.35);
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin: 12px 0 24px;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin-top: 28px;
+  margin-bottom: 12px;
+}
+
+.prospect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prospect-card {
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.prospect-card summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.prospect-card summary::-webkit-details-marker {
+  display: none;
+}
+
+.prospect-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.prospect-category {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(127, 127, 127, 0.3);
+}
+
+.prospect-score {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.reasons {
+  margin: 12px 0 8px 20px;
+  font-size: 0.88rem;
+}
+
+.reasons li {
+  margin-bottom: 4px;
+}

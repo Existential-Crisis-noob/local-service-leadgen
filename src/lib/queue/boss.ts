@@ -10,17 +10,6 @@ export function getBoss(): PgBoss {
   return globalForBoss.boss;
 }
 
-let started: Promise<PgBoss> | null = null;
-
-/** Starts (or reuses) the shared pg-boss instance. Safe to call from any request path. */
-export async function startBoss(): Promise<PgBoss> {
-  if (!started) {
-    const boss = getBoss();
-    started = boss.start().then(() => boss);
-  }
-  return started;
-}
-
 export const QUEUES = {
   discoverBusinesses: "discover-businesses",
   inspectWebsite: "inspect-website",
@@ -30,3 +19,20 @@ export const QUEUES = {
   pollReplies: "poll-replies",
   sendFollowup: "send-followup",
 } as const;
+
+let started: Promise<PgBoss> | null = null;
+
+/** Starts (or reuses) the shared pg-boss instance and ensures every known
+ * queue exists. Safe to call from any request path or the worker process. */
+export async function startBoss(): Promise<PgBoss> {
+  if (!started) {
+    const boss = getBoss();
+    started = boss.start().then(async () => {
+      for (const queueName of Object.values(QUEUES)) {
+        await boss.createQueue(queueName);
+      }
+      return boss;
+    });
+  }
+  return started;
+}
