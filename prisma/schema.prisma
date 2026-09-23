@@ -1,0 +1,422 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Auth / accounts ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  accounts          Account[]
+  sessions          Session[]
+  memberships       WorkspaceMember[]
+  mailboxes         MailboxConnection[]
+  activityLogs      ActivityLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ---------- Workspaces ----------
+
+enum WorkspaceRole {
+  OWNER
+  MEMBER
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members       WorkspaceMember[]
+  campaigns     Campaign[]
+  businesses    Business[]
+  emailTemplates EmailTemplate[]
+  activityLogs  ActivityLog[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(OWNER)
+  createdAt   DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+// ---------- Campaigns ----------
+
+enum ConnectorType {
+  OSM
+  CSV_IMPORT
+  URL_IMPORT
+  GOV_DIRECTORY
+  YELP
+  APPLE_MAPS
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model Campaign {
+  id          String         @id @default(cuid())
+  workspaceId String
+  name        String
+  status      CampaignStatus @default(DRAFT)
+
+  industryKeywords String[]
+  city             String
+  region           String?
+  postalCode       String?
+  countryCode      String  @default("CA")
+  radiusKm         Float
+
+  connectorType   ConnectorType
+  connectorConfig Json
+
+  desiredProspectCount Int     @default(50)
+  websiteQualityFilter Json?
+
+  emailTemplateId    String?
+  maxEmailLength     Int      @default(900)
+  followupDelayHours Int      @default(72)
+  maxFollowups       Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  emailTemplate    EmailTemplate?     @relation(fields: [emailTemplateId], references: [id])
+  connectorRuns    SourceConnectorRun[]
+  businesses       Business[]
+  draftEmails      DraftEmail[]
+
+  @@map("campaigns")
+}
+
+model SourceConnectorRun {
+  id            String        @id @default(cuid())
+  campaignId    String
+  connectorType ConnectorType
+  params        Json
+  startedAt     DateTime      @default(now())
+  finishedAt    DateTime?
+  candidateCount Int          @default(0)
+  errorMessage  String?
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("source_connector_runs")
+}
+
+// ---------- Businesses / websites / scoring ----------
+
+model Business {
+  id          String   @id @default(cuid())
+  workspaceId String
+  campaignId  String?
+
+  name        String
+  phone       String?
+  address     String?
+  city        String?
+  region      String?
+  postalCode  String?
+  lat         Float?
+  lon         Float?
+  category    String?
+
+  sourceConnector ConnectorType
+  sourceUrl       String?
+  dedupeKey       String
+  collectedAt     DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaign  Campaign? @relation(fields: [campaignId], references: [id])
+
+  websites  Website[]
+  contacts  BusinessContact[]
+  score     ProspectScore?
+  drafts    DraftEmail[]
+
+  @@unique([workspaceId, dedupeKey])
+  @@map("businesses")
+}
+
+model Website {
+  id            String   @id @default(cuid())
+  businessId    String
+  url           String
+  discoveredVia String
+  createdAt     DateTime @default(now())
+
+  business   Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  assessment WebsiteAssessment?
+
+  @@map("websites")
+}
+
+model WebsiteAssessment {
+  id                 String   @id @default(cuid())
+  websiteId          String   @unique
+  loads              Boolean
+  httpStatus         Int?
+  https              Boolean
+  mobileResponsive   Boolean?
+  hasContactInfo     Boolean
+  hasQuoteButton     Boolean
+  brokenInternalUrls String[]
+  copyrightYear      Int?
+  weakServiceInfo    Boolean
+  evidence           Json
+  assessedAt         DateTime @default(now())
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@map("website_assessments")
+}
+
+enum ProspectCategory {
+  NO_WEBSITE
+  BROKEN
+  POOR_OUTDATED
+  WEAK_MARKETING
+  GOOD
+  NO_PUBLIC_EMAIL
+}
+
+model ProspectScore {
+  id         String           @id @default(cuid())
+  businessId String           @unique
+  category   ProspectCategory
+  score      Int
+  reasons    String[]
+  scoredAt   DateTime         @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("prospect_scores")
+}
+
+model BusinessContact {
+  id           String   @id @default(cuid())
+  businessId   String
+  email        String
+  sourcePageUrl String
+  foundAt      DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, email])
+  @@map("business_contacts")
+}
+
+// ---------- Email templates / drafts ----------
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  workspaceId String
+  industry    String
+  name        String
+  subject     String
+  body        String
+  maxLength   Int      @default(900)
+  createdAt   DateTime @default(now())
+
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+  drafts    DraftEmail[]
+
+  @@map("email_templates")
+}
+
+enum DraftStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EDITED
+  SENT
+}
+
+model DraftEmail {
+  id         String      @id @default(cuid())
+  businessId String
+  campaignId String
+  templateId String?
+
+  toEmail String
+  subject String
+  body    String
+  status  DraftStatus @default(PENDING)
+
+  observedIssues String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  campaign Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+  sent     SentMessage?
+
+  @@map("draft_emails")
+}
+
+// ---------- Mailbox / sending ----------
+
+enum MailboxProvider {
+  GMAIL
+  OUTLOOK
+  SMTP
+}
+
+model MailboxConnection {
+  id                  String          @id @default(cuid())
+  userId              String
+  provider            MailboxProvider @default(GMAIL)
+  emailAddress        String
+  encryptedAccessToken  String
+  encryptedRefreshToken String
+  dailySendLimit      Int             @default(50)
+  connectedAt         DateTime        @default(now())
+  disconnectedAt      DateTime?
+
+  user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sent SentMessage[]
+
+  @@map("mailbox_connections")
+}
+
+model SentMessage {
+  id                  String   @id @default(cuid())
+  draftId             String   @unique
+  mailboxConnectionId String
+  gmailThreadId       String
+  gmailMessageId       String
+  sentAt              DateTime @default(now())
+
+  draft             DraftEmail          @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  mailboxConnection MailboxConnection   @relation(fields: [mailboxConnectionId], references: [id])
+  followups         FollowupSchedule[]
+  replies           Reply[]
+
+  @@map("sent_messages")
+}
+
+model FollowupSchedule {
+  id            String    @id @default(cuid())
+  sentMessageId String
+  scheduledAt   DateTime
+  sentAt        DateTime?
+  canceled      Boolean   @default(false)
+  cancelReason  String?
+  createdAt     DateTime  @default(now())
+
+  sentMessage SentMessage @relation(fields: [sentMessageId], references: [id], onDelete: Cascade)
+
+  @@map("followup_schedules")
+}
+
+enum ReplyStatus {
+  NEEDS_REVIEW
+  HANDLED
+}
+
+model Reply {
+  id            String      @id @default(cuid())
+  sentMessageId String
+  status        ReplyStatus @default(NEEDS_REVIEW)
+  snippet       String
+  receivedAt    DateTime    @default(now())
+
+  sentMessage SentMessage @relation(fields: [sentMessageId], references: [id], onDelete: Cascade)
+
+  @@map("replies")
+}
+
+model Unsubscribe {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  requestedAt DateTime @default(now())
+  reason      String?
+
+  @@map("unsubscribes")
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  workspaceId String
+  actorUserId String?
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User?     @relation(fields: [actorUserId], references: [id])
+
+  @@map("activity_logs")
+}
