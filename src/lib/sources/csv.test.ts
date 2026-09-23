@@ -30,6 +30,19 @@ describe("parseCsvBusinesses", () => {
     expect(errors[0]).toMatch(/facebook/i);
   });
 
+  it("accepts a direct email column and rejects a malformed one", () => {
+    const csv = ["name,email", "Acme Roofing,info@acmeroofing.example.com", "Acme Masonry,not-an-email"].join(
+      "\n"
+    );
+
+    const { candidates, errors } = parseCsvBusinesses(csv);
+
+    expect(candidates).toHaveLength(2);
+    expect(candidates[0].email).toBe("info@acmeroofing.example.com");
+    expect(candidates[1].email).toBeUndefined();
+    expect(errors[0]).toMatch(/doesn't look valid/i);
+  });
+
   it("skips rows missing a business name", () => {
     const csv = ["name,city", ",Calgary"].join("\n");
 

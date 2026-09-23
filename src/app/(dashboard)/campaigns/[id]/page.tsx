@@ -114,7 +114,7 @@ export default async function CampaignDetailPage({
             <input type="file" name="csvFile" accept=".csv,text/csv" required />
             <span className="hint">
               Columns recognized: name, phone, address, city, region, postal code, website,
-              category.
+              email, category.
             </span>
           </label>
           <button type="submit" className="btn-primary">

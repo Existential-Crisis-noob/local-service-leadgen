@@ -281,13 +281,16 @@ button:hover {
   flex: 1;
 }
 
-.field input {
+.field input,
+.field textarea {
   padding: 8px 10px;
   border-radius: 6px;
   border: 1px solid rgba(127, 127, 127, 0.35);
   background: transparent;
   color: inherit;
   font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
 }
 
 .field-row {
@@ -409,4 +412,37 @@ h2 {
 
 .reasons li {
   margin-bottom: 4px;
+}
+
+.draft-card {
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 8px;
+  padding: 16px;
+  gap: 14px;
+}
+
+.draft-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.draft-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.mailbox-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid rgba(127, 127, 127, 0.25);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.inline-form {
+  display: inline;
 }

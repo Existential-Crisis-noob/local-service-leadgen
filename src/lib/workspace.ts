@@ -21,3 +21,14 @@ export async function getCurrentWorkspaceId(userId: string) {
   if (member) return member.workspaceId;
   return ensureWorkspaceForUser(userId, "My");
 }
+
+/** The sender identity shown in outreach emails — the workspace owner's
+ * name (or email, as a fallback) so recipients see a real person. */
+export async function getWorkspaceOwnerName(workspaceId: string): Promise<string> {
+  const owner = await prisma.workspaceMember.findFirst({
+    where: { workspaceId, role: "OWNER" },
+    include: { user: true },
+    orderBy: { createdAt: "asc" },
+  });
+  return owner?.user.name ?? owner?.user.email ?? "The team";
+}

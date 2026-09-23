@@ -2,6 +2,7 @@ import type { ConnectorType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { CandidateBusiness } from "@/lib/sources/types";
 import { scoreBusiness } from "@/lib/scoring/score";
+import { generateDraftForBusiness } from "@/lib/email/generateDraftForBusiness";
 import { computeDedupeKey } from "./dedupe";
 
 export interface PersistResult {
@@ -36,8 +37,9 @@ export async function persistCandidates(
     }
 
     const hasWebsite = Boolean(candidate.websiteUrl);
+    const hasEmail = Boolean(candidate.email);
 
-    await prisma.business.create({
+    const business = await prisma.business.create({
       data: {
         workspaceId,
         campaignId,
@@ -56,15 +58,22 @@ export async function persistCandidates(
         websites: hasWebsite
           ? { create: { url: candidate.websiteUrl!, discoveredVia: connectorType } }
           : undefined,
+        contacts: hasEmail
+          ? { create: { email: candidate.email!, sourcePageUrl: candidate.sourceUrl ?? connectorType } }
+          : undefined,
         // Businesses with no website can be scored immediately (brief:
         // "No website: strong sales prospect"); businesses with a website
         // are scored once inspection finishes (see inspectWebsite job).
         score: hasWebsite
           ? undefined
-          : { create: scoreBusiness({ hasWebsite: false, hasPublicEmail: false }) },
+          : { create: scoreBusiness({ hasWebsite: false, hasPublicEmail: hasEmail }) },
       },
     });
     created += 1;
+
+    if (!hasWebsite && hasEmail) {
+      await generateDraftForBusiness(business.id);
+    }
   }
 
   return { created, duplicates };

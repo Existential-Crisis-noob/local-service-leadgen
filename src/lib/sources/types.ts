@@ -9,6 +9,8 @@ export interface CandidateBusiness {
   lon?: number;
   category?: string;
   websiteUrl?: string;
+  /** A directly-supplied email (e.g. a CSV "email" column) — never guessed. */
+  email?: string;
   /** The URL/row/API record this candidate was collected from, for the audit trail. */
   sourceUrl?: string;
 }

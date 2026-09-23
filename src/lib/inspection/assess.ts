@@ -7,6 +7,7 @@ import {
   hasViewportMeta,
   isWeakServiceInfo,
 } from "./heuristics";
+import { extractEmailsFromPage, type FoundEmail } from "./extractEmails";
 
 const USER_AGENT = "local-service-leadgen/0.1 (website quality check)";
 const FETCH_TIMEOUT_MS = 8000;
@@ -25,6 +26,10 @@ export interface WebsiteAssessmentResult {
   copyrightYear: number | null;
   weakServiceInfo: boolean;
   evidence: Record<string, JsonEvidenceValue>;
+  /** Published emails found on the homepage or an obvious contact page —
+   * never guessed, only what's actually published on the business's own
+   * site. */
+  foundEmails: FoundEmail[];
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
@@ -41,11 +46,23 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
+function mergeUniqueByEmail(lists: FoundEmail[][]): FoundEmail[] {
+  const map = new Map<string, FoundEmail>();
+  for (const list of lists) {
+    for (const found of list) {
+      if (!map.has(found.email)) map.set(found.email, found);
+    }
+  }
+  return Array.from(map.values());
+}
+
 /**
  * Fetches a business's homepage and runs the brief's website-quality checks
  * against it (loads, HTTPS, mobile-responsive proxy, contact info, quote
- * CTA, broken internal pages, copyright year, thin service content).
- * Heuristic, not a rendered check — no headless browser in the MVP.
+ * CTA, broken internal pages, copyright year, thin service content), plus
+ * scanning the homepage (and an obvious contact page, if linked) for a
+ * published email address. Heuristic, not a rendered check — no headless
+ * browser in the MVP.
  */
 export async function assessWebsite(url: string): Promise<WebsiteAssessmentResult> {
   let response: Response;
@@ -63,6 +80,7 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
       copyrightYear: null,
       weakServiceInfo: true,
       evidence: { fetchError: error instanceof Error ? error.message : "Unknown fetch error" },
+      foundEmails: [],
     };
   }
 
@@ -84,6 +102,22 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
     }
   }
 
+  const homepageEmails = extractEmailsFromPage($, finalUrl);
+
+  const contactLink = internalLinks.find((link) => /contact/i.test(link));
+  let contactPageEmails: FoundEmail[] = [];
+  if (contactLink) {
+    try {
+      const contactResponse = await fetchWithTimeout(contactLink);
+      if (contactResponse.ok) {
+        const contact$ = load(await contactResponse.text());
+        contactPageEmails = extractEmailsFromPage(contact$, contactLink);
+      }
+    } catch {
+      // Best-effort only — the contact page just won't contribute an email.
+    }
+  }
+
   return {
     loads: response.ok,
     httpStatus: response.status,
@@ -98,5 +132,6 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
       finalUrl,
       checkedInternalLinks: internalLinks,
     },
+    foundEmails: mergeUniqueByEmail([homepageEmails, contactPageEmails]),
   };
 }

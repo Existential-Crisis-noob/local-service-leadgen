@@ -32,7 +32,11 @@ const COLUMN_ALIASES: Record<string, keyof CandidateBusiness> = {
   website: "websiteUrl",
   websiteurl: "websiteUrl",
   url: "websiteUrl",
+  email: "email",
+  emailaddress: "email",
 };
+
+const SIMPLE_EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeHeader(header: string): string {
   return header.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -71,6 +75,12 @@ export function parseCsvBusinesses(csvText: string): CsvImportResult {
           continue;
         }
         candidate.websiteUrl = classification.url;
+      } else if (field === "email") {
+        if (!SIMPLE_EMAIL_PATTERN.test(value)) {
+          errors.push(`Row ${rowNumber}: email "${value}" doesn't look valid — skipped.`);
+          continue;
+        }
+        candidate.email = value.toLowerCase();
       } else if (field === "lat" || field === "lon") {
         const num = parseFloat(value);
         if (!Number.isNaN(num)) candidate[field] = num;

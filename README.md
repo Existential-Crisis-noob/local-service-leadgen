@@ -25,6 +25,19 @@ this repo is following.
 4. Start the app: `npm run dev`
 5. In a second terminal, start the background worker: `npm run worker`
 
+### Google OAuth (app login + Gmail sending)
+
+One Google Cloud OAuth client covers both flows — register **both**
+redirect URIs on it:
+
+- `{AUTH_URL}/api/auth/callback/google` — app login (NextAuth)
+- `{AUTH_URL}/api/mailbox/google/callback` — connecting a Gmail mailbox to
+  send from (a separate consent screen, `gmail.send` scope only)
+
+Without `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` set, "Sign in with
+Google" and "Connect Gmail" are both hidden — email/password login and
+CSV/URL-import campaigns still work.
+
 ## Scripts
 
 | Script | Purpose |
