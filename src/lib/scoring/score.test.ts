@@ -86,4 +86,49 @@ describe("scoreBusiness", () => {
     // The only reason for a GOOD site should be the generic all-clear statement.
     expect(result.reasons).toHaveLength(1);
   });
+
+  it("categorizes a low Lighthouse performance score as POOR_OUTDATED even when heuristics look fine", () => {
+    const result = scoreBusiness({
+      hasWebsite: true,
+      hasPublicEmail: true,
+      assessment: {
+        ...GOOD_ASSESSMENT,
+        lighthouse: { performance: 22, accessibility: 90, bestPractices: 90, seo: 90 },
+      },
+    });
+    expect(result.category).toBe("POOR_OUTDATED");
+    expect(result.reasons.some((r) => /Lighthouse performance score is low \(22\/100\)/.test(r))).toBe(true);
+  });
+
+  it("categorizes a low Lighthouse SEO score as WEAK_MARKETING when everything else is fine", () => {
+    const result = scoreBusiness({
+      hasWebsite: true,
+      hasPublicEmail: true,
+      assessment: {
+        ...GOOD_ASSESSMENT,
+        lighthouse: { performance: 90, accessibility: 90, bestPractices: 90, seo: 30 },
+      },
+    });
+    expect(result.category).toBe("WEAK_MARKETING");
+    expect(result.reasons.some((r) => /Lighthouse SEO score is low \(30\/100\)/.test(r))).toBe(true);
+  });
+
+  it("stays GOOD when Lighthouse scores are all high, or when Lighthouse didn't run at all", () => {
+    const withHighScores = scoreBusiness({
+      hasWebsite: true,
+      hasPublicEmail: true,
+      assessment: {
+        ...GOOD_ASSESSMENT,
+        lighthouse: { performance: 95, accessibility: 95, bestPractices: 95, seo: 95 },
+      },
+    });
+    expect(withHighScores.category).toBe("GOOD");
+
+    const withoutLighthouse = scoreBusiness({
+      hasWebsite: true,
+      hasPublicEmail: true,
+      assessment: { ...GOOD_ASSESSMENT, lighthouse: null },
+    });
+    expect(withoutLighthouse.category).toBe("GOOD");
+  });
 });

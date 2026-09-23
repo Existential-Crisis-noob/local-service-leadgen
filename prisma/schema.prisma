@@ -230,6 +230,13 @@ model WebsiteAssessment {
   brokenInternalUrls String[]
   copyrightYear      Int?
   weakServiceInfo    Boolean
+  // Real Lighthouse audit scores (0-100) via the PageSpeed Insights API —
+  // null when PAGESPEED_API_KEY isn't configured; the heuristics above
+  // always run regardless, so scoring never depends on this being set.
+  lighthousePerformance    Int?
+  lighthouseAccessibility  Int?
+  lighthouseBestPractices  Int?
+  lighthouseSeo            Int?
   evidence           Json
   assessedAt         DateTime @default(now())
 

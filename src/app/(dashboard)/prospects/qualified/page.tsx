@@ -82,6 +82,18 @@ export default async function QualifiedProspectsPage({
                 </p>
               )}
               {b.contacts[0]?.email && <p className="hint">Contact: {b.contacts[0].email}</p>}
+              {b.websites[0]?.assessment &&
+                (b.websites[0].assessment.lighthousePerformance !== null ||
+                  b.websites[0].assessment.lighthouseAccessibility !== null ||
+                  b.websites[0].assessment.lighthouseBestPractices !== null ||
+                  b.websites[0].assessment.lighthouseSeo !== null) && (
+                  <p className="hint">
+                    Lighthouse — performance: {b.websites[0].assessment.lighthousePerformance ?? "—"},
+                    accessibility: {b.websites[0].assessment.lighthouseAccessibility ?? "—"},
+                    best practices: {b.websites[0].assessment.lighthouseBestPractices ?? "—"}, SEO:{" "}
+                    {b.websites[0].assessment.lighthouseSeo ?? "—"}
+                  </p>
+                )}
             </details>
           ))}
         </div>

@@ -10,6 +10,9 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional().default(""),
   // Required starting with the Gmail-mailbox phase.
   TOKEN_ENCRYPTION_KEY: z.string().optional().default(""),
+  // Optional — enables real Lighthouse audits (via PageSpeed Insights) in
+  // website inspection. Without it, the existing heuristics still run.
+  PAGESPEED_API_KEY: z.string().optional().default(""),
 });
 
 export const env = envSchema.parse(process.env);

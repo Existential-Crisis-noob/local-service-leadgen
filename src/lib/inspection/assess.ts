@@ -8,6 +8,7 @@ import {
   isWeakServiceInfo,
 } from "./heuristics";
 import { extractEmailsFromPage, type FoundEmail } from "./extractEmails";
+import { runPageSpeedAudit, type PageSpeedResult } from "./pagespeed";
 
 const USER_AGENT = "local-service-leadgen/0.1 (website quality check)";
 const FETCH_TIMEOUT_MS = 8000;
@@ -30,6 +31,9 @@ export interface WebsiteAssessmentResult {
    * never guessed, only what's actually published on the business's own
    * site. */
   foundEmails: FoundEmail[];
+  /** Real Lighthouse scores via PageSpeed Insights — null when
+   * PAGESPEED_API_KEY isn't configured, or the audit failed/timed out. */
+  lighthouse: PageSpeedResult | null;
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
@@ -81,6 +85,7 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
       weakServiceInfo: true,
       evidence: { fetchError: error instanceof Error ? error.message : "Unknown fetch error" },
       foundEmails: [],
+      lighthouse: null,
     };
   }
 
@@ -118,6 +123,10 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
     }
   }
 
+  // Only spend a PageSpeed audit (and its API quota) on a page that our own
+  // fetch could already reach — a dead URL doesn't need a second opinion.
+  const lighthouse = response.ok ? await runPageSpeedAudit(finalUrl) : null;
+
   return {
     loads: response.ok,
     httpStatus: response.status,
@@ -133,5 +142,6 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
       checkedInternalLinks: internalLinks,
     },
     foundEmails: mergeUniqueByEmail([homepageEmails, contactPageEmails]),
+    lighthouse,
   };
 }

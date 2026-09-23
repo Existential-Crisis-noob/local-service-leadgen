@@ -26,6 +26,10 @@ export async function inspectWebsite(payload: InspectWebsitePayload) {
     brokenInternalUrls: result.brokenInternalUrls,
     copyrightYear: result.copyrightYear,
     weakServiceInfo: result.weakServiceInfo,
+    lighthousePerformance: result.lighthouse?.performance ?? null,
+    lighthouseAccessibility: result.lighthouse?.accessibility ?? null,
+    lighthouseBestPractices: result.lighthouse?.bestPractices ?? null,
+    lighthouseSeo: result.lighthouse?.seo ?? null,
     evidence: { ...result.evidence },
   };
 
