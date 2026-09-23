@@ -24,7 +24,7 @@ export default async function QualifiedProspectsPage({
   const businesses = await prisma.business.findMany({
     where: {
       workspaceId,
-      score: { isNot: null },
+      score: { qualified: true },
       ...(campaignId ? { campaignId } : {}),
     },
     include: {
@@ -70,7 +70,14 @@ export default async function QualifiedProspectsPage({
               </ul>
               <p className="hint">
                 Source: {b.sourceConnector}
-                {b.sourceUrl ? ` (${b.sourceUrl})` : ""} · collected{" "}
+                {b.sourceUrl && (
+                  <>
+                    {" · "}
+                    <a href={b.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      view source record
+                    </a>
+                  </>
+                )} · collected{" "}
                 {b.collectedAt.toLocaleDateString()}
               </p>
               {b.websites[0]?.url && (

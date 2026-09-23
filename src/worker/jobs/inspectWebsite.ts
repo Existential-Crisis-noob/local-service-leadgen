@@ -10,11 +10,26 @@ export interface InspectWebsitePayload {
 export async function inspectWebsite(payload: InspectWebsitePayload) {
   const website = await prisma.website.findUnique({
     where: { id: payload.websiteId },
-    include: { business: { include: { contacts: true } } },
+    include: { business: { include: { contacts: true, campaign: true } } },
   });
   if (!website) return;
 
   const result = await assessWebsite(website.url);
+
+  if (result.siteName) {
+    try {
+      const currentNameIsHostname =
+        website.business.name === new URL(website.url).hostname.replace(/^www\./, "");
+      if (currentNameIsHostname) {
+        await prisma.business.update({
+          where: { id: website.businessId },
+          data: { name: result.siteName },
+        });
+      }
+    } catch {
+      // URL validity is enforced before persistence; leave the collected name unchanged if parsing fails.
+    }
+  }
 
   const assessmentData = {
     loads: result.loads,
@@ -53,16 +68,32 @@ export async function inspectWebsite(payload: InspectWebsitePayload) {
 
   const hasPublicEmail = website.business.contacts.length > 0 || result.foundEmails.length > 0;
 
-  const { category, score, reasons } = scoreBusiness({
+  const scored = scoreBusiness({
     hasWebsite: true,
     hasPublicEmail,
     assessment: result,
+    qualificationFilter: (website.business.campaign?.websiteQualityFilter ?? null) as Record<
+      string,
+      boolean
+    > | null,
   });
 
   await prisma.prospectScore.upsert({
     where: { businessId: website.businessId },
-    create: { businessId: website.businessId, category, score, reasons },
-    update: { category, score, reasons, scoredAt: new Date() },
+    create: {
+      businessId: website.businessId,
+      category: scored.category,
+      score: scored.score,
+      qualified: scored.qualified,
+      reasons: scored.reasons,
+    },
+    update: {
+      category: scored.category,
+      score: scored.score,
+      qualified: scored.qualified,
+      reasons: scored.reasons,
+      scoredAt: new Date(),
+    },
   });
 
   if (hasPublicEmail) {

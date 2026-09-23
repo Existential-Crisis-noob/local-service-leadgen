@@ -25,6 +25,14 @@ export interface DiscoverParams {
   desiredCount: number;
 }
 
+export interface DiscoverProgress {
+  progress: number;
+  stage: string;
+  message: string;
+}
+
+export type ProgressReporter = (update: DiscoverProgress) => Promise<void> | void;
+
 export interface SourceConnector {
-  discover(params: DiscoverParams): Promise<CandidateBusiness[]>;
+  discover(params: DiscoverParams, onProgress?: ProgressReporter): Promise<CandidateBusiness[]>;
 }

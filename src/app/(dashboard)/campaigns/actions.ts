@@ -10,7 +10,7 @@ import { logActivity } from "@/lib/activityLog";
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Name is required").max(120),
-  industries: z.array(z.enum(INDUSTRY_OPTIONS)).min(1, "Pick at least one industry"),
+  industries: z.array(z.enum(INDUSTRY_OPTIONS)),
   otherKeywords: z.string().optional(),
   city: z.string().min(1, "City is required"),
   region: z.string().optional(),
@@ -53,27 +53,37 @@ export async function createCampaignAction(formData: FormData) {
     .split(",")
     .map((k) => k.trim())
     .filter(Boolean);
-
+  const industryKeywords = Array.from(new Set([...data.industries, ...extraKeywords]));
+  if (industryKeywords.length === 0) {
+    redirect(
+      `/campaigns/new?error=${encodeURIComponent("Enter at least one industry or service keyword.")}`
+    );
+  }
   const workspaceId = await getCurrentWorkspaceId(session.user.id);
 
   const campaign = await prisma.campaign.create({
     data: {
       workspaceId,
       name: data.name,
-      industryKeywords: [...data.industries, ...extraKeywords],
+      industryKeywords,
       city: data.city,
       region: data.region,
       postalCode: data.postalCode,
-      countryCode: data.countryCode,
+      countryCode: data.countryCode.toUpperCase(),
       radiusKm: data.radiusKm,
       connectorType: data.connectorType,
       connectorConfig: {},
       desiredProspectCount: data.desiredProspectCount,
       websiteQualityFilter: {
-        requireHttps: formData.has("requireHttps"),
-        requireMobileResponsive: formData.has("requireMobileResponsive"),
-        requireContactInfo: formData.has("requireContactInfo"),
-        requireQuoteButton: formData.has("requireQuoteButton"),
+        targetNoWebsite: formData.has("targetNoWebsite"),
+        targetBroken: formData.has("targetBroken"),
+        targetMissingHttps: formData.has("targetMissingHttps"),
+        targetNotMobile: formData.has("targetNotMobile"),
+        targetMissingContact: formData.has("targetMissingContact"),
+        targetMissingQuote: formData.has("targetMissingQuote"),
+        targetOutdatedCopyright: formData.has("targetOutdatedCopyright"),
+        targetWeakService: formData.has("targetWeakService"),
+        targetGoodWebsite: formData.has("targetGoodWebsite"),
       },
       maxEmailLength: data.maxEmailLength,
       followupDelayHours: data.followupDelayHours,

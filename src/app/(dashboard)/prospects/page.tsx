@@ -15,11 +15,11 @@ export default async function AllProspectsPage({
   const [businesses, campaign] = await Promise.all([
     prisma.business.findMany({
       where: { workspaceId, ...(campaignId ? { campaignId } : {}) },
-      include: { websites: true },
+      include: { websites: true, score: true, contacts: true },
       orderBy: { collectedAt: "desc" },
       take: 200,
     }),
-    campaignId ? prisma.campaign.findUnique({ where: { id: campaignId } }) : null,
+    campaignId ? prisma.campaign.findFirst({ where: { id: campaignId, workspaceId } }) : null,
   ]);
 
   return (
@@ -45,7 +45,7 @@ export default async function AllProspectsPage({
           No prospects yet. Run discovery or import businesses from a campaign.
         </p>
       ) : (
-        <table className="data-table">
+        <div className="table-wrap"><table className="data-table">
           <thead>
             <tr>
               <th>Name</th>
@@ -53,13 +53,14 @@ export default async function AllProspectsPage({
               <th>Phone</th>
               <th>Location</th>
               <th>Source</th>
+              <th>Qualification</th>
               <th>Collected</th>
             </tr>
           </thead>
           <tbody>
             {businesses.map((b) => (
               <tr key={b.id}>
-                <td>{b.name}</td>
+                <td><div className="business-cell"><strong>{b.name}</strong><span>{b.category ?? "Service business"}</span></div></td>
                 <td>
                   {b.websites[0]?.url ? (
                     <a href={b.websites[0].url} target="_blank" rel="noopener noreferrer">
@@ -71,12 +72,25 @@ export default async function AllProspectsPage({
                 </td>
                 <td>{b.phone ?? "—"}</td>
                 <td>{[b.city, b.region, b.postalCode].filter(Boolean).join(", ") || "—"}</td>
-                <td>{b.sourceConnector}</td>
+                <td>
+                  {b.sourceUrl ? (
+                    <a href={b.sourceUrl} target="_blank" rel="noopener noreferrer">
+                      <span className="source-chip">{b.sourceConnector}</span>
+                    </a>
+                  ) : <span className="source-chip">{b.sourceConnector}</span>}
+                </td>
+                <td>
+                  {b.score ? (
+                    <span className={`status-pill ${b.score.qualified ? "active" : ""}`}>
+                      {b.score.qualified ? `Qualified · ${b.score.score}` : `Not qualified · ${b.score.score}`}
+                    </span>
+                  ) : <span className="hint">Inspection pending</span>}
+                </td>
                 <td>{b.collectedAt.toLocaleDateString()}</td>
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

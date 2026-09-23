@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Lead Gen",
-  description: "Discover, qualify and contact local-service businesses",
+  title: "LocalSignal",
+  description: "Discover, qualify and contact local-service businesses from approved sources",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

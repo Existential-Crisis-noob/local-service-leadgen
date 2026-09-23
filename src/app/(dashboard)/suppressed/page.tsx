@@ -6,15 +6,18 @@ export default async function SuppressedPage() {
   const session = await auth();
   const workspaceId = await getCurrentWorkspaceId(session!.user.id);
 
-  const suppressions = await prisma.unsubscribe.findMany({
-    orderBy: { requestedAt: "desc" },
-    take: 200,
-  });
-
   const contacts = await prisma.businessContact.findMany({
-    where: { email: { in: suppressions.map((s) => s.email) }, business: { workspaceId } },
+    where: { business: { workspaceId } },
     include: { business: true },
   });
+  const workspaceEmails = Array.from(new Set(contacts.map((contact) => contact.email)));
+  const suppressions = workspaceEmails.length
+    ? await prisma.unsubscribe.findMany({
+        where: { email: { in: workspaceEmails } },
+        orderBy: { requestedAt: "desc" },
+        take: 200,
+      })
+    : [];
   const businessByEmail = new Map(contacts.map((c) => [c.email, c.business.name]));
 
   return (

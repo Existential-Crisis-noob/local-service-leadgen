@@ -1,0 +1,6 @@
+ALTER TYPE "ConnectorType" ADD VALUE IF NOT EXISTS 'CANADA_ONE';
+
+ALTER TABLE "source_connector_runs"
+ADD COLUMN "stage" TEXT NOT NULL DEFAULT 'queued',
+ADD COLUMN "progress" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN "statusMessage" TEXT;

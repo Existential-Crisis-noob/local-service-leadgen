@@ -67,6 +67,20 @@ export function classifyUrl(rawUrl: string): UrlClassification {
 
   const hostname = stripWww(parsed.hostname.toLowerCase());
 
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local") ||
+    hostname.endsWith(".internal") ||
+    /^(?:0|10|127)\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    /^169\.254\./.test(hostname) ||
+    /^172\.(?:1[6-9]|2\d|3[01])\./.test(hostname) ||
+    hostname === "::1"
+  ) {
+    return { kind: "rejected", url: rawUrl, reason: "Private or local network page — never scraped." };
+  }
+
   if (LOGIN_WALL_DOMAINS.has(hostname) || LOGIN_PATH_PATTERN.test(parsed.pathname)) {
     return { kind: "rejected", url: rawUrl, reason: "Login-protected or private page — never scraped." };
   }

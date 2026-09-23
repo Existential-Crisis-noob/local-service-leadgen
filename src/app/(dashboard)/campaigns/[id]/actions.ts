@@ -29,10 +29,41 @@ function summarizeErrors(errors: string[]): string | undefined {
 }
 
 export async function runOsmDiscoveryAction(campaignId: string) {
-  await requireCampaign(campaignId);
+  const campaign = await requireCampaign(campaignId);
+  if (campaign.connectorType !== "OSM") {
+    redirect(
+      `/campaigns/${campaignId}?error=${encodeURIComponent("This source is imported from the campaign page instead.")}`
+    );
+  }
+
+  const activeRun = await prisma.sourceConnectorRun.findFirst({
+    where: { campaignId, finishedAt: null },
+    orderBy: { startedAt: "desc" },
+  });
+  if (activeRun) redirect(`/campaigns/${campaignId}?queued=already`);
+
+  const run = await startConnectorRun(campaign.id, campaign.connectorType, {
+    city: campaign.city,
+    region: campaign.region,
+    postalCode: campaign.postalCode,
+    countryCode: campaign.countryCode,
+    radiusKm: campaign.radiusKm,
+    industryKeywords: campaign.industryKeywords,
+    desiredCount: campaign.desiredProspectCount,
+  });
 
   const boss = await startBoss();
-  await boss.send(QUEUES.discoverBusinesses, { campaignId });
+  try {
+    await boss.send(QUEUES.discoverBusinesses, { campaignId, runId: run.id });
+  } catch (error) {
+    await finishConnectorRun(run.id, {
+      candidateCount: 0,
+      errorMessage: error instanceof Error ? error.message : "Could not queue discovery",
+    });
+    redirect(
+      `/campaigns/${campaignId}?error=${encodeURIComponent("Could not queue discovery. Check the worker and try again.")}`
+    );
+  }
 
   redirect(`/campaigns/${campaignId}?queued=1`);
 }

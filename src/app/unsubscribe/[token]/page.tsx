@@ -2,10 +2,6 @@ import { prisma } from "@/lib/prisma";
 import { confirmUnsubscribeAction } from "./actions";
 
 async function resolveEmail(token: string): Promise<{ email: string; businessName: string | null } | null> {
-  if (token.includes("@")) {
-    return { email: token.toLowerCase(), businessName: null };
-  }
-
   const contact = await prisma.businessContact.findUnique({
     where: { id: token },
     include: { business: true },
@@ -58,7 +54,6 @@ export default async function UnsubscribePage({
           {resolved.businessName ? ` (${resolved.businessName})` : ""}.
         </p>
         <form action={confirmUnsubscribeAction} className="auth-form">
-          <input type="hidden" name="email" value={resolved.email} />
           <input type="hidden" name="token" value={token} />
           <button type="submit">Confirm unsubscribe</button>
         </form>

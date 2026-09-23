@@ -14,6 +14,7 @@ this repo is following.
   follow-ups, reply polling) — runs entirely on Postgres, no Redis
 - NextAuth (Auth.js) for app login (email/password + Google)
 - Gmail API (separate OAuth scope from app login) for sending mail
+- A provider-neutral draft-generation boundary with a rule-based default (no paid AI required)
 
 ## Local setup
 
@@ -22,8 +23,10 @@ this repo is following.
    `openssl rand -base64 32`).
 2. Start Postgres: `npm run db:up`
 3. Apply the schema: `npm run db:migrate`
-4. (Optional) Seed a demo login with one scored prospect: `npm run db:seed`
-   — logs in as `demo@example.com` / `password123`
+4. Create an account in the app. To provision a local administrator from the
+   command line instead, set `SEED_ADMIN_NAME`, `SEED_ADMIN_EMAIL`, and
+   `SEED_ADMIN_PASSWORD`, then run `npm run db:seed`. The seed never creates
+   campaigns, businesses, contacts, or fabricated prospect data.
 5. Start the app: `npm run dev`
 6. In a second terminal, start the background worker: `npm run worker`
 
@@ -49,7 +52,7 @@ CSV/URL-import campaigns still work.
 | `npm run db:up` / `db:down` | Local Postgres via docker-compose |
 | `npm run db:migrate` | Apply Prisma migrations |
 | `npm run db:studio` | Prisma Studio (browse the DB) |
-| `npm run db:seed` | Seed a demo user/workspace/campaign/scored prospect |
+| `npm run db:seed` | Optionally provision a real local administrator from environment values |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run build` | Production build |
 
@@ -58,10 +61,11 @@ CSV/URL-import campaigns still work.
 ```
 prisma/schema.prisma       Data model (see docs/BUILD-PLAN.md for the full list)
 src/app/(dashboard)/*      The 8 dashboards (Campaigns, All Prospects, ...)
-src/lib/sources/*          Source connectors (OSM, CSV import, URL import, ...)
+src/lib/sources/*          Source connectors (OSM, CSV and URL import)
 src/lib/inspection/*        Website inspection heuristics
 src/lib/scoring/*          Prospect scoring
 src/lib/email/*            Template-based email drafting (+ pluggable AI interface)
+src/lib/ai/*               Interchangeable draft-generation provider boundary
 src/lib/mailbox/*          Gmail OAuth connect + send + reply polling
 src/lib/queue/*            pg-boss setup and queue names
 src/worker/index.ts        Background worker process entrypoint
@@ -79,3 +83,20 @@ Every pasted/imported URL is classified before anything is fetched
 
 This repo intentionally does not build a generic scraper that accepts
 arbitrary platform URLs.
+
+The automated discovery connectors currently exposed in campaign setup are:
+
+- OpenStreetMap through public Overpass endpoints with mirror fallback and exact-radius filtering
+- User CSV import
+- User-supplied business-owned website URLs
+
+Government/contractor-directory is planned but not yet implemented — every
+directory we've evaluated for it either lacks contact info entirely or
+explicitly prohibits automated collection in its own terms, so it stays a
+"coming soon" option in campaign setup rather than a real connector until one
+that actually permits this is found. Google Maps, Facebook, Reddit, Kijiji,
+Yelp pages, and other unsupported marketplace/social/map-result pages are not
+scraped. An email becomes sendable contact evidence only when it's published
+on the business-owned public website (or explicitly provided by the user in a
+CSV import) — never guessed, and never taken from a third-party directory
+listing.

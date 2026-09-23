@@ -4,13 +4,14 @@ import { buildOverpassQuery, parseOverpassElements } from "./osm";
 describe("buildOverpassQuery", () => {
   it("maps a known industry keyword to its OSM craft tag", () => {
     const query = buildOverpassQuery({ lat: 51.05, lon: -114.07 }, 30000, ["roofing"]);
-    expect(query).toContain(`node["craft"="roofer"](around:30000,51.05,-114.07);`);
-    expect(query).toContain(`way["craft"="roofer"](around:30000,51.05,-114.07);`);
+    expect(query).toContain(`node["craft"="roofer"](`);
+    expect(query).toContain(`way["craft"="roofer"](`);
+    expect(query).not.toContain("around:");
   });
 
   it("falls back to a name search for unmapped keywords", () => {
     const query = buildOverpassQuery({ lat: 51.05, lon: -114.07 }, 30000, ["landscaping"]);
-    expect(query).toContain(`node["name"~"landscaping",i](around:30000,51.05,-114.07);`);
+    expect(query).toContain(`node["name"~"landscaping",i](`);
   });
 });
 
