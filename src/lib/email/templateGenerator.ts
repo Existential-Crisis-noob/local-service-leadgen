@@ -56,3 +56,21 @@ export function generateTemplateEmail(input: EmailGenerationInput): GeneratedEma
 
   return { subject, body };
 }
+
+/** The single MVP-capped follow-up: a short bump, no new claims about the
+ * business, same sender identity and unsubscribe instructions. */
+export function generateFollowupEmail(
+  original: GeneratedEmail,
+  senderName: string,
+  unsubscribeUrl: string
+): GeneratedEmail {
+  const subject = original.subject.startsWith("Re:") ? original.subject : `Re: ${original.subject}`;
+
+  const body = [
+    "Just following up on my note below — happy to answer any questions or share more detail if that's useful.",
+    senderName,
+    `Reply "unsubscribe" at any time, or use this link: ${unsubscribeUrl}`,
+  ].join("\n\n");
+
+  return { subject, body };
+}

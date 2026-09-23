@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspaceId } from "@/lib/workspace";
+import { logActivity } from "@/lib/activityLog";
 
 async function requireDraft(draftId: string) {
   const session = await auth();
@@ -15,12 +16,12 @@ async function requireDraft(draftId: string) {
   });
   if (!draft) redirect("/drafts");
 
-  return draft;
+  return { draft, workspaceId, userId: session.user.id };
 }
 
 export async function saveDraftEditAction(formData: FormData) {
   const draftId = String(formData.get("draftId"));
-  const draft = await requireDraft(draftId);
+  const { draft } = await requireDraft(draftId);
 
   const subject = String(formData.get("subject") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -35,8 +36,17 @@ export async function saveDraftEditAction(formData: FormData) {
 
 export async function approveDraftAction(formData: FormData) {
   const draftId = String(formData.get("draftId"));
-  await requireDraft(draftId);
+  const { workspaceId, userId } = await requireDraft(draftId);
+
   await prisma.draftEmail.update({ where: { id: draftId }, data: { status: "APPROVED" } });
+  await logActivity({
+    workspaceId,
+    actorUserId: userId,
+    action: "draft.approved",
+    entityType: "DraftEmail",
+    entityId: draftId,
+  });
+
   redirect("/drafts");
 }
 

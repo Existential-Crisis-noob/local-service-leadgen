@@ -446,3 +446,10 @@ h2 {
 .inline-form {
   display: inline;
 }
+
+.reply-snippet {
+  font-style: italic;
+  opacity: 0.8;
+  border-left: 3px solid rgba(127, 127, 127, 0.3);
+  padding-left: 12px;
+}

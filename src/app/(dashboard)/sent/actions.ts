@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspaceId } from "@/lib/workspace";
 import { decryptToken } from "@/lib/crypto";
 import { sendApprovedDraftsForWorkspace } from "@/lib/mailbox/sendApprovedDrafts";
+import { logActivity } from "@/lib/activityLog";
 
 export async function sendApprovedAction() {
   const session = await auth();
@@ -14,8 +15,20 @@ export async function sendApprovedAction() {
   const workspaceId = await getCurrentWorkspaceId(session.user.id);
   const summary = await sendApprovedDraftsForWorkspace(workspaceId);
 
+  if (summary.sent > 0) {
+    await logActivity({
+      workspaceId,
+      actorUserId: session.user.id,
+      action: "drafts.sent",
+      entityType: "Workspace",
+      entityId: workspaceId,
+      metadata: { count: summary.sent },
+    });
+  }
+
   const params = new URLSearchParams();
   params.set("sent", String(summary.sent));
+  if (summary.suppressed > 0) params.set("suppressed", String(summary.suppressed));
   if (summary.skippedNoMailbox) params.set("noMailbox", "1");
   if (summary.limitReached) params.set("limitReached", "1");
   if (summary.errors.length > 0) params.set("sendErrors", summary.errors.slice(0, 3).join(" | "));
@@ -46,6 +59,16 @@ export async function disconnectMailboxAction(formData: FormData) {
   await prisma.mailboxConnection.update({
     where: { id: mailbox.id },
     data: { disconnectedAt: new Date(), encryptedAccessToken: "", encryptedRefreshToken: "" },
+  });
+
+  const workspaceId = await getCurrentWorkspaceId(session.user.id);
+  await logActivity({
+    workspaceId,
+    actorUserId: session.user.id,
+    action: "mailbox.disconnected",
+    entityType: "MailboxConnection",
+    entityId: mailbox.id,
+    metadata: { emailAddress: mailbox.emailAddress },
   });
 
   redirect("/sent");

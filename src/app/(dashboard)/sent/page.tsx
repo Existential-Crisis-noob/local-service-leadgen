@@ -9,6 +9,7 @@ export default async function SentAndFollowupsPage({
 }: {
   searchParams: Promise<{
     sent?: string;
+    suppressed?: string;
     noMailbox?: string;
     limitReached?: string;
     sendErrors?: string;
@@ -74,6 +75,11 @@ export default async function SentAndFollowupsPage({
       )}
       {params.sent && Number(params.sent) > 0 && (
         <p className="empty-state">Sent {params.sent} email(s).</p>
+      )}
+      {params.suppressed && (
+        <p className="empty-state">
+          Skipped {params.suppressed} unsubscribed recipient(s) — rejected instead of sent.
+        </p>
       )}
       {params.noMailbox && <p className="auth-error">Connect a Gmail mailbox before sending.</p>}
       {params.limitReached && (

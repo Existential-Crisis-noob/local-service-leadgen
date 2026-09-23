@@ -39,21 +39,65 @@ export interface SendResult {
   gmailThreadId: string;
 }
 
-export async function sendGmailMessage(
-  tokens: { accessToken: string; refreshToken: string },
-  email: OutgoingEmail
-): Promise<SendResult> {
+function authorizedClient(tokens: { accessToken: string; refreshToken: string }) {
   const client = createGoogleOAuthClient();
   client.setCredentials({ access_token: tokens.accessToken, refresh_token: tokens.refreshToken });
+  return client;
+}
 
-  const gmail = google.gmail({ version: "v1", auth: client });
+/** Sends a message. Pass `threadId` to keep a follow-up or manual reply in
+ * the same Gmail thread as the original. */
+export async function sendGmailMessage(
+  tokens: { accessToken: string; refreshToken: string },
+  email: OutgoingEmail,
+  options?: { threadId?: string }
+): Promise<SendResult> {
+  const gmail = google.gmail({ version: "v1", auth: authorizedClient(tokens) });
   const raw = buildRawMessage(email);
 
-  const response = await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
+  const response = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: { raw, threadId: options?.threadId },
+  });
 
   if (!response.data.id || !response.data.threadId) {
     throw new Error("Gmail send succeeded but did not return a message/thread id.");
   }
 
   return { gmailMessageId: response.data.id, gmailThreadId: response.data.threadId };
+}
+
+export interface ThreadCheckResult {
+  hasReply: boolean;
+  fromHeader: string;
+  subjectHeader: string;
+  snippet: string;
+}
+
+/** Checks whether a sent thread now has an inbound message beyond the one
+ * we sent — the signal used for reply detection and follow-up cancellation. */
+export async function getThreadLatestMessage(
+  tokens: { accessToken: string; refreshToken: string },
+  threadId: string
+): Promise<ThreadCheckResult> {
+  const gmail = google.gmail({ version: "v1", auth: authorizedClient(tokens) });
+
+  const { data } = await gmail.users.threads.get({
+    userId: "me",
+    id: threadId,
+    format: "metadata",
+    metadataHeaders: ["From", "Subject"],
+  });
+
+  const messages = data.messages ?? [];
+  if (messages.length < 2) {
+    return { hasReply: false, fromHeader: "", subjectHeader: "", snippet: "" };
+  }
+
+  const last = messages[messages.length - 1];
+  const headers = last.payload?.headers ?? [];
+  const fromHeader = headers.find((h) => h.name === "From")?.value ?? "";
+  const subjectHeader = headers.find((h) => h.name === "Subject")?.value ?? "";
+
+  return { hasReply: true, fromHeader, subjectHeader, snippet: last.snippet ?? "" };
 }

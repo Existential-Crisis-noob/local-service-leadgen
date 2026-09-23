@@ -20,6 +20,9 @@ export async function generateDraftForBusiness(businessId: string) {
   const contact = business.contacts[0];
   if (!contact) return null;
 
+  const suppressed = await prisma.unsubscribe.findUnique({ where: { email: contact.email } });
+  if (suppressed) return null;
+
   const existing = await prisma.draftEmail.findFirst({
     where: { businessId, campaignId: business.campaign.id },
   });

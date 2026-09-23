@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWorkspaceId } from "@/lib/workspace";
 import { INDUSTRY_OPTIONS } from "@/lib/campaigns";
+import { logActivity } from "@/lib/activityLog";
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Name is required").max(120),
@@ -78,6 +79,15 @@ export async function createCampaignAction(formData: FormData) {
       followupDelayHours: data.followupDelayHours,
       maxFollowups: data.maxFollowups,
     },
+  });
+
+  await logActivity({
+    workspaceId,
+    actorUserId: session.user.id,
+    action: "campaign.created",
+    entityType: "Campaign",
+    entityId: campaign.id,
+    metadata: { name: campaign.name, connectorType: campaign.connectorType },
   });
 
   redirect(`/campaigns/${campaign.id}`);

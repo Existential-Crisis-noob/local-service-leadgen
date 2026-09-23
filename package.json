@@ -12,6 +12,7 @@
     "db:down": "docker compose down",
     "db:migrate": "dotenv -e .env -- prisma migrate dev",
     "db:studio": "dotenv -e .env -- prisma studio",
+    "db:seed": "dotenv -e .env -- tsx prisma/seed.ts",
     "worker": "dotenv -e .env -- tsx watch src/worker/index.ts"
   },
   "dependencies": {

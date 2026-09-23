@@ -22,8 +22,10 @@ this repo is following.
    `openssl rand -base64 32`).
 2. Start Postgres: `npm run db:up`
 3. Apply the schema: `npm run db:migrate`
-4. Start the app: `npm run dev`
-5. In a second terminal, start the background worker: `npm run worker`
+4. (Optional) Seed a demo login with one scored prospect: `npm run db:seed`
+   — logs in as `demo@example.com` / `password123`
+5. Start the app: `npm run dev`
+6. In a second terminal, start the background worker: `npm run worker`
 
 ### Google OAuth (app login + Gmail sending)
 
@@ -47,6 +49,7 @@ CSV/URL-import campaigns still work.
 | `npm run db:up` / `db:down` | Local Postgres via docker-compose |
 | `npm run db:migrate` | Apply Prisma migrations |
 | `npm run db:studio` | Prisma Studio (browse the DB) |
+| `npm run db:seed` | Seed a demo user/workspace/campaign/scored prospect |
 | `npm run test` | Unit tests (Vitest) |
 | `npm run build` | Production build |
 

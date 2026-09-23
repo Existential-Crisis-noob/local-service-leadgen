@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateTemplateEmail } from "./templateGenerator";
+import { generateFollowupEmail, generateTemplateEmail } from "./templateGenerator";
 
 const BASE_INPUT = {
   businessName: "Acme Roofing",
@@ -42,5 +42,28 @@ describe("generateTemplateEmail", () => {
     expect(shortened.body.length).toBeLessThanOrEqual(400);
     expect(shortened.body).toContain(BASE_INPUT.unsubscribeUrl);
     expect(shortened.body).toContain(BASE_INPUT.senderName);
+  });
+});
+
+describe("generateFollowupEmail", () => {
+  const original = { subject: "Quick note about Acme Roofing's website", body: "original body" };
+  const senderName = "Jane from Lead Gen";
+  const unsubscribeUrl = "https://app.example.com/unsubscribe/abc123";
+
+  it("prefixes the subject with Re: and includes sender identity and unsubscribe link", () => {
+    const followup = generateFollowupEmail(original, senderName, unsubscribeUrl);
+    expect(followup.subject).toBe("Re: Quick note about Acme Roofing's website");
+    expect(followup.body).toContain(senderName);
+    expect(followup.body).toContain(unsubscribeUrl);
+  });
+
+  it("doesn't double-prefix a subject that already starts with Re:", () => {
+    const followup = generateFollowupEmail({ ...original, subject: "Re: already replied" }, senderName, unsubscribeUrl);
+    expect(followup.subject).toBe("Re: already replied");
+  });
+
+  it("never invents a new claim about the business", () => {
+    const followup = generateFollowupEmail(original, senderName, unsubscribeUrl);
+    expect(followup.body).not.toContain("website");
   });
 });
