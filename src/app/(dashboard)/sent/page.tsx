@@ -64,7 +64,7 @@ export default async function SentAndFollowupsPage({
           </a>
         ) : (
           <span className="hint">
-            Not connected — set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET to enable Gmail sending.
+            Gmail OAuth is not configured for this deployment. Add the Google OAuth credentials in deployment settings before connecting a mailbox.
           </span>
         )}
       </div>
@@ -88,7 +88,7 @@ export default async function SentAndFollowupsPage({
       {params.sendErrors && <p className="auth-error">{params.sendErrors}</p>}
 
       <form action={sendApprovedAction}>
-        <button type="submit" className="btn-primary" disabled={pendingCount === 0}>
+        <button type="submit" className="btn-primary" disabled={pendingCount === 0 || !mailbox}>
           Send {pendingCount} approved email(s)
         </button>
       </form>

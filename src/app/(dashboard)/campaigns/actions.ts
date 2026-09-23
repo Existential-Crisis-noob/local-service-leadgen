@@ -10,14 +10,14 @@ import { logActivity } from "@/lib/activityLog";
 
 const campaignSchema = z.object({
   name: z.string().min(1, "Name is required").max(120),
-  industries: z.array(z.enum(INDUSTRY_OPTIONS)).min(1, "Pick at least one industry"),
+  industries: z.array(z.enum(INDUSTRY_OPTIONS)),
   otherKeywords: z.string().optional(),
   city: z.string().min(1, "City is required"),
   region: z.string().optional(),
   postalCode: z.string().optional(),
   countryCode: z.string().min(2).max(2),
   radiusKm: z.coerce.number().positive().max(500),
-  connectorType: z.enum(["OSM", "CSV_IMPORT", "URL_IMPORT", "GOV_DIRECTORY"]),
+  connectorType: z.enum(["OSM", "CANADA_ONE", "CSV_IMPORT", "URL_IMPORT", "GOV_DIRECTORY"]),
   desiredProspectCount: z.coerce.number().int().positive().max(1000),
   maxEmailLength: z.coerce.number().int().positive().max(3000),
   followupDelayHours: z.coerce.number().int().positive().max(720),
@@ -53,6 +53,22 @@ export async function createCampaignAction(formData: FormData) {
     .split(",")
     .map((k) => k.trim())
     .filter(Boolean);
+  const industryKeywords = Array.from(new Set([...data.industries, ...extraKeywords]));
+  if (industryKeywords.length === 0) {
+    redirect(
+      `/campaigns/new?error=${encodeURIComponent("Enter at least one industry or service keyword.")}`
+    );
+  }
+  if (data.connectorType === "CANADA_ONE" && data.countryCode.toUpperCase() !== "CA") {
+    redirect(
+      `/campaigns/new?error=${encodeURIComponent("CanadaOne is available only for Canadian campaigns.")}`
+    );
+  }
+  if (data.connectorType === "CANADA_ONE" && !data.region) {
+    redirect(
+      `/campaigns/new?error=${encodeURIComponent("CanadaOne requires a two-letter province or territory code.")}`
+    );
+  }
 
   const workspaceId = await getCurrentWorkspaceId(session.user.id);
 
@@ -60,20 +76,25 @@ export async function createCampaignAction(formData: FormData) {
     data: {
       workspaceId,
       name: data.name,
-      industryKeywords: [...data.industries, ...extraKeywords],
+      industryKeywords,
       city: data.city,
       region: data.region,
       postalCode: data.postalCode,
-      countryCode: data.countryCode,
+      countryCode: data.countryCode.toUpperCase(),
       radiusKm: data.radiusKm,
       connectorType: data.connectorType,
       connectorConfig: {},
       desiredProspectCount: data.desiredProspectCount,
       websiteQualityFilter: {
-        requireHttps: formData.has("requireHttps"),
-        requireMobileResponsive: formData.has("requireMobileResponsive"),
-        requireContactInfo: formData.has("requireContactInfo"),
-        requireQuoteButton: formData.has("requireQuoteButton"),
+        targetNoWebsite: formData.has("targetNoWebsite"),
+        targetBroken: formData.has("targetBroken"),
+        targetMissingHttps: formData.has("targetMissingHttps"),
+        targetNotMobile: formData.has("targetNotMobile"),
+        targetMissingContact: formData.has("targetMissingContact"),
+        targetMissingQuote: formData.has("targetMissingQuote"),
+        targetOutdatedCopyright: formData.has("targetOutdatedCopyright"),
+        targetWeakService: formData.has("targetWeakService"),
+        targetGoodWebsite: formData.has("targetGoodWebsite"),
       },
       maxEmailLength: data.maxEmailLength,
       followupDelayHours: data.followupDelayHours,

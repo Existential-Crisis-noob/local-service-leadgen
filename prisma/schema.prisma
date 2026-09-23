@@ -18,11 +18,11 @@ model User {
   image         String?
   createdAt     DateTime  @default(now())
 
-  accounts          Account[]
-  sessions          Session[]
-  memberships       WorkspaceMember[]
-  mailboxes         MailboxConnection[]
-  activityLogs      ActivityLog[]
+  accounts     Account[]
+  sessions     Session[]
+  memberships  WorkspaceMember[]
+  mailboxes    MailboxConnection[]
+  activityLogs ActivityLog[]
 
   @@map("users")
 }
@@ -79,11 +79,11 @@ model Workspace {
   name      String
   createdAt DateTime @default(now())
 
-  members       WorkspaceMember[]
-  campaigns     Campaign[]
-  businesses    Business[]
+  members        WorkspaceMember[]
+  campaigns      Campaign[]
+  businesses     Business[]
   emailTemplates EmailTemplate[]
-  activityLogs  ActivityLog[]
+  activityLogs   ActivityLog[]
 
   @@map("workspaces")
 }
@@ -106,6 +106,7 @@ model WorkspaceMember {
 
 enum ConnectorType {
   OSM
+  CANADA_ONE
   CSV_IMPORT
   URL_IMPORT
   GOV_DIRECTORY
@@ -130,41 +131,44 @@ model Campaign {
   city             String
   region           String?
   postalCode       String?
-  countryCode      String  @default("CA")
+  countryCode      String   @default("CA")
   radiusKm         Float
 
   connectorType   ConnectorType
   connectorConfig Json
 
-  desiredProspectCount Int     @default(50)
+  desiredProspectCount Int   @default(50)
   websiteQualityFilter Json?
 
   emailTemplateId    String?
-  maxEmailLength     Int      @default(900)
-  followupDelayHours Int      @default(72)
-  maxFollowups       Int      @default(1)
+  maxEmailLength     Int     @default(900)
+  followupDelayHours Int     @default(72)
+  maxFollowups       Int     @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  emailTemplate    EmailTemplate?     @relation(fields: [emailTemplateId], references: [id])
-  connectorRuns    SourceConnectorRun[]
-  businesses       Business[]
-  draftEmails      DraftEmail[]
+  workspace     Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  emailTemplate EmailTemplate?       @relation(fields: [emailTemplateId], references: [id])
+  connectorRuns SourceConnectorRun[]
+  businesses    Business[]
+  draftEmails   DraftEmail[]
 
   @@map("campaigns")
 }
 
 model SourceConnectorRun {
-  id            String        @id @default(cuid())
-  campaignId    String
-  connectorType ConnectorType
-  params        Json
-  startedAt     DateTime      @default(now())
-  finishedAt    DateTime?
-  candidateCount Int          @default(0)
-  errorMessage  String?
+  id             String        @id @default(cuid())
+  campaignId     String
+  connectorType  ConnectorType
+  params         Json
+  startedAt      DateTime      @default(now())
+  finishedAt     DateTime?
+  stage          String        @default("queued")
+  progress       Int           @default(0)
+  statusMessage  String?
+  candidateCount Int           @default(0)
+  errorMessage   String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
@@ -174,19 +178,19 @@ model SourceConnectorRun {
 // ---------- Businesses / websites / scoring ----------
 
 model Business {
-  id          String   @id @default(cuid())
+  id          String  @id @default(cuid())
   workspaceId String
   campaignId  String?
 
-  name        String
-  phone       String?
-  address     String?
-  city        String?
-  region      String?
-  postalCode  String?
-  lat         Float?
-  lon         Float?
-  category    String?
+  name       String
+  phone      String?
+  address    String?
+  city       String?
+  region     String?
+  postalCode String?
+  lat        Float?
+  lon        Float?
+  category   String?
 
   sourceConnector ConnectorType
   sourceUrl       String?
@@ -196,10 +200,10 @@ model Business {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   campaign  Campaign? @relation(fields: [campaignId], references: [id])
 
-  websites  Website[]
-  contacts  BusinessContact[]
-  score     ProspectScore?
-  drafts    DraftEmail[]
+  websites Website[]
+  contacts BusinessContact[]
+  score    ProspectScore?
+  drafts   DraftEmail[]
 
   @@unique([workspaceId, dedupeKey])
   @@map("businesses")
@@ -212,7 +216,7 @@ model Website {
   discoveredVia String
   createdAt     DateTime @default(now())
 
-  business   Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   assessment WebsiteAssessment?
 
   @@map("websites")
@@ -252,6 +256,7 @@ model ProspectScore {
   businessId String           @unique
   category   ProspectCategory
   score      Int
+  qualified  Boolean          @default(false)
   reasons    String[]
   scoredAt   DateTime         @default(now())
 
@@ -261,11 +266,11 @@ model ProspectScore {
 }
 
 model BusinessContact {
-  id           String   @id @default(cuid())
-  businessId   String
-  email        String
+  id            String   @id @default(cuid())
+  businessId    String
+  email         String
   sourcePageUrl String
-  foundAt      DateTime @default(now())
+  foundAt       DateTime @default(now())
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
@@ -301,7 +306,7 @@ enum DraftStatus {
 }
 
 model DraftEmail {
-  id         String      @id @default(cuid())
+  id         String  @id @default(cuid())
   businessId String
   campaignId String
   templateId String?
@@ -333,15 +338,15 @@ enum MailboxProvider {
 }
 
 model MailboxConnection {
-  id                  String          @id @default(cuid())
-  userId              String
-  provider            MailboxProvider @default(GMAIL)
-  emailAddress        String
+  id                    String          @id @default(cuid())
+  userId                String
+  provider              MailboxProvider @default(GMAIL)
+  emailAddress          String
   encryptedAccessToken  String
   encryptedRefreshToken String
-  dailySendLimit      Int             @default(50)
-  connectedAt         DateTime        @default(now())
-  disconnectedAt      DateTime?
+  dailySendLimit        Int             @default(50)
+  connectedAt           DateTime        @default(now())
+  disconnectedAt        DateTime?
 
   user User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   sent SentMessage[]
@@ -354,11 +359,11 @@ model SentMessage {
   draftId             String   @unique
   mailboxConnectionId String
   gmailThreadId       String
-  gmailMessageId       String
+  gmailMessageId      String
   sentAt              DateTime @default(now())
 
-  draft             DraftEmail          @relation(fields: [draftId], references: [id], onDelete: Cascade)
-  mailboxConnection MailboxConnection   @relation(fields: [mailboxConnectionId], references: [id])
+  draft             DraftEmail         @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  mailboxConnection MailboxConnection  @relation(fields: [mailboxConnectionId], references: [id])
   followups         FollowupSchedule[]
   replies           Reply[]
 

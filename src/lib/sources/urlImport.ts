@@ -7,8 +7,8 @@ export interface UrlImportResult {
 }
 
 /** Turns user-pasted URLs into candidate businesses, gated through
- * classifyUrl. The business name is a placeholder (its hostname) until
- * website inspection (phase 6) can read the page and refine it. */
+ * classifyUrl. The hostname is stored as the initial observed identity;
+ * website inspection replaces it with the published site name when present. */
 export function buildCandidatesFromUrls(rawUrls: string[]): UrlImportResult {
   const candidates: CandidateBusiness[] = [];
   const rejected: { url: string; reason: string }[] = [];

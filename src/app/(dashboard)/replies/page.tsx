@@ -43,7 +43,7 @@ export default async function RepliesPage({
               <p className="reply-snippet">&ldquo;{reply.snippet}&rdquo;</p>
               <label className="field">
                 Your reply
-                <textarea name="message" rows={6} placeholder="Write your response…" />
+                <textarea name="message" rows={6} />
               </label>
               <div className="draft-actions">
                 <button type="submit" formAction={sendManualReplyAction} className="btn-primary">

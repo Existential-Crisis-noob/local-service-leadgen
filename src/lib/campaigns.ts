@@ -20,6 +20,12 @@ export const CONNECTOR_OPTIONS = [
     description: "Geocodes your location and pulls tagged businesses from OpenStreetMap. No API key needed.",
   },
   {
+    value: "CANADA_ONE",
+    label: "CanadaOne business directory",
+    description:
+      "Searches CanadaOne's public Canadian directory through a dedicated, rate-limited connector. Province code required.",
+  },
+  {
     value: "CSV_IMPORT",
     label: "CSV import",
     description: "Upload a spreadsheet of businesses you've already collected.",
@@ -28,10 +34,5 @@ export const CONNECTOR_OPTIONS = [
     value: "URL_IMPORT",
     label: "Business website URLs",
     description: "Paste specific business website URLs to inspect directly.",
-  },
-  {
-    value: "GOV_DIRECTORY",
-    label: "Government / contractor directory",
-    description: "Coming soon — will connect once an open contractor-license dataset is wired up.",
   },
 ] as const;

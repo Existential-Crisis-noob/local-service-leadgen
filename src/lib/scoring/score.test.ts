@@ -86,4 +86,26 @@ describe("scoreBusiness", () => {
     // The only reason for a GOOD site should be the generic all-clear statement.
     expect(result.reasons).toHaveLength(1);
   });
+
+  it("marks a prospect qualified only when an observed issue matches an enabled campaign rule", () => {
+    const result = scoreBusiness({
+      hasWebsite: true,
+      hasPublicEmail: true,
+      assessment: { ...GOOD_ASSESSMENT, https: false },
+      qualificationFilter: {
+        targetMissingHttps: false,
+        targetNotMobile: true,
+        targetOutdatedCopyright: false,
+      },
+    });
+    expect(result.qualified).toBe(false);
+
+    const matching = scoreBusiness({
+      hasWebsite: true,
+      hasPublicEmail: true,
+      assessment: { ...GOOD_ASSESSMENT, https: false },
+      qualificationFilter: { targetMissingHttps: true },
+    });
+    expect(matching.qualified).toBe(true);
+  });
 });

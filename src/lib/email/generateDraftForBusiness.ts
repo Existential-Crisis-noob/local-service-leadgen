@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { getWorkspaceOwnerName } from "@/lib/workspace";
-import { generateTemplateEmail } from "./templateGenerator";
+import { getDraftGenerationProvider } from "@/lib/ai/provider";
 
 /**
  * Prepares a draft outreach email for a business, gated strictly on having
@@ -15,7 +15,7 @@ export async function generateDraftForBusiness(businessId: string) {
     include: { score: true, contacts: true, websites: true, campaign: true },
   });
 
-  if (!business || !business.campaign || !business.score) return null;
+  if (!business || !business.campaign || !business.score?.qualified) return null;
 
   const contact = business.contacts[0];
   if (!contact) return null;
@@ -32,7 +32,7 @@ export async function generateDraftForBusiness(businessId: string) {
   const senderName = await getWorkspaceOwnerName(business.workspaceId);
   const unsubscribeUrl = `${env.AUTH_URL}/unsubscribe/${contact.id}`;
 
-  const generated = generateTemplateEmail({
+  const generated = await getDraftGenerationProvider().generate({
     businessName: business.name,
     industry,
     category: business.score.category,

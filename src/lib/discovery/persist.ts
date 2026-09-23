@@ -23,6 +23,11 @@ export async function persistCandidates(
 ): Promise<PersistResult> {
   let created = 0;
   let duplicates = 0;
+  const campaign = await prisma.campaign.findFirst({
+    where: { id: campaignId, workspaceId },
+    select: { websiteQualityFilter: true },
+  });
+  const qualificationFilter = (campaign?.websiteQualityFilter ?? null) as Record<string, boolean> | null;
 
   for (const candidate of candidates) {
     const dedupeKey = computeDedupeKey(candidate);
@@ -66,7 +71,13 @@ export async function persistCandidates(
         // are scored once inspection finishes (see inspectWebsite job).
         score: hasWebsite
           ? undefined
-          : { create: scoreBusiness({ hasWebsite: false, hasPublicEmail: hasEmail }) },
+          : {
+              create: scoreBusiness({
+                hasWebsite: false,
+                hasPublicEmail: hasEmail,
+                qualificationFilter,
+              }),
+            },
       },
     });
     created += 1;

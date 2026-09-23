@@ -16,11 +16,13 @@ export interface ScoreInput {
   hasWebsite: boolean;
   hasPublicEmail: boolean;
   assessment?: ScoreAssessmentInput;
+  qualificationFilter?: Record<string, boolean> | null;
 }
 
 export interface ScoreResult {
   category: ProspectCategory;
   score: number;
+  qualified: boolean;
   reasons: string[];
 }
 
@@ -33,10 +35,14 @@ const OUTDATED_COPYRIGHT_YEARS = 2;
  * (never guess/auto-send) while keeping the underlying reasons visible.
  */
 export function scoreBusiness(input: ScoreInput): ScoreResult {
+  const filter = input.qualificationFilter;
+  const enabled = (key: string, fallback = true) => filter?.[key] ?? fallback;
+
   if (!input.hasWebsite) {
     return {
       category: "NO_WEBSITE",
       score: 75,
+      qualified: enabled("targetNoWebsite"),
       reasons: [
         "No website found for this business — strong sales prospect, may need phone/manual contact.",
       ],
@@ -45,12 +51,18 @@ export function scoreBusiness(input: ScoreInput): ScoreResult {
 
   const a = input.assessment;
   if (!a) {
-    return { category: "GOOD", score: 15, reasons: ["Website found; assessment pending."] };
+    return {
+      category: "GOOD",
+      score: 15,
+      qualified: false,
+      reasons: ["Website found; assessment pending."],
+    };
   }
 
   const reasons: string[] = [];
   let category: ProspectCategory;
   let score: number;
+  let qualified = false;
 
   const currentYear = new Date().getFullYear();
 
@@ -62,6 +74,7 @@ export function scoreBusiness(input: ScoreInput): ScoreResult {
     if (a.brokenInternalUrls.length > 0) {
       reasons.push(`${a.brokenInternalUrls.length} broken internal page(s) found.`);
     }
+    qualified = enabled("targetBroken");
   } else if (
     !a.https ||
     a.mobileResponsive === false ||
@@ -74,26 +87,37 @@ export function scoreBusiness(input: ScoreInput): ScoreResult {
     if (a.copyrightYear !== null && a.copyrightYear < currentYear - OUTDATED_COPYRIGHT_YEARS) {
       reasons.push(`Footer copyright year (${a.copyrightYear}) is outdated.`);
     }
+    qualified =
+      (!a.https && enabled("targetMissingHttps")) ||
+      (a.mobileResponsive === false && enabled("targetNotMobile")) ||
+      (a.copyrightYear !== null &&
+        a.copyrightYear < currentYear - OUTDATED_COPYRIGHT_YEARS &&
+        enabled("targetOutdatedCopyright"));
   } else if (a.weakServiceInfo || !a.hasQuoteButton || !a.hasContactInfo) {
     category = "WEAK_MARKETING";
     score = 55;
     if (a.weakServiceInfo) reasons.push("Website has thin service/marketing content.");
     if (!a.hasQuoteButton) reasons.push("No visible quote/request-service call to action.");
     if (!a.hasContactInfo) reasons.push("No clearly visible contact information.");
+    qualified =
+      (a.weakServiceInfo && enabled("targetWeakService")) ||
+      (!a.hasQuoteButton && enabled("targetMissingQuote")) ||
+      (!a.hasContactInfo && enabled("targetMissingContact"));
   } else {
     category = "GOOD";
     score = 15;
     reasons.push(
       "Website loads, is HTTPS, mobile-responsive, and has clear contact and service information."
     );
+    qualified = enabled("targetGoodWebsite", false);
   }
 
   if (!input.hasPublicEmail) {
     reasons.push(
       "No public business email found on the website — do not guess or auto-send; requires phone/manual contact."
     );
-    return { category: "NO_PUBLIC_EMAIL", score: Math.min(score, 40), reasons };
+    return { category: "NO_PUBLIC_EMAIL", score: Math.min(score, 40), qualified, reasons };
   }
 
-  return { category, score, reasons };
+  return { category, score, qualified, reasons };
 }

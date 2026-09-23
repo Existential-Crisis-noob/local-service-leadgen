@@ -52,7 +52,14 @@ export async function sendDueFollowups() {
 
     try {
       const contact = sent.draft.business.contacts.find((c) => c.email === sent.draft.toEmail);
-      const unsubscribeUrl = `${env.AUTH_URL}/unsubscribe/${contact?.id ?? sent.draft.toEmail}`;
+      if (!contact) {
+        await prisma.followupSchedule.update({
+          where: { id: schedule.id },
+          data: { canceled: true, cancelReason: "Verified contact record missing" },
+        });
+        continue;
+      }
+      const unsubscribeUrl = `${env.AUTH_URL}/unsubscribe/${contact.id}`;
 
       const followupEmail = generateFollowupEmail(
         { subject: sent.draft.subject, body: sent.draft.body },

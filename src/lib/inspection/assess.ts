@@ -1,4 +1,4 @@
-import { load } from "cheerio";
+import { load, type CheerioAPI } from "cheerio";
 import {
   extractCopyrightYear,
   extractInternalLinks,
@@ -8,6 +8,7 @@ import {
   isWeakServiceInfo,
 } from "./heuristics";
 import { extractEmailsFromPage, type FoundEmail } from "./extractEmails";
+import { fetchPublicWebsite } from "./publicFetch";
 
 const USER_AGENT = "local-service-leadgen/0.1 (website quality check)";
 const FETCH_TIMEOUT_MS = 8000;
@@ -16,6 +17,7 @@ const MAX_INTERNAL_LINKS_CHECKED = 5;
 export type JsonEvidenceValue = string | number | boolean | null | string[];
 
 export interface WebsiteAssessmentResult {
+  siteName: string | null;
   loads: boolean;
   httpStatus: number | null;
   https: boolean;
@@ -33,17 +35,11 @@ export interface WebsiteAssessmentResult {
 }
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      ...init,
-      signal: controller.signal,
-      headers: { "User-Agent": USER_AGENT, ...init?.headers },
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
+  return fetchPublicWebsite(
+    url,
+    { ...init, headers: { "User-Agent": USER_AGENT, ...init?.headers } },
+    FETCH_TIMEOUT_MS
+  );
 }
 
 function mergeUniqueByEmail(lists: FoundEmail[][]): FoundEmail[] {
@@ -70,6 +66,7 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
     response = await fetchWithTimeout(url);
   } catch (error) {
     return {
+      siteName: null,
       loads: false,
       httpStatus: null,
       https: url.startsWith("https://"),
@@ -118,7 +115,10 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
     }
   }
 
+  const siteName = extractSiteName($);
+
   return {
+    siteName,
     loads: response.ok,
     httpStatus: response.status,
     https: finalUrl.startsWith("https://"),
@@ -130,8 +130,26 @@ export async function assessWebsite(url: string): Promise<WebsiteAssessmentResul
     weakServiceInfo: isWeakServiceInfo($),
     evidence: {
       finalUrl,
+      siteName,
       checkedInternalLinks: internalLinks,
     },
     foundEmails: mergeUniqueByEmail([homepageEmails, contactPageEmails]),
   };
+}
+
+function extractSiteName($: CheerioAPI): string | null {
+  const candidates = [
+    $('meta[property="og:site_name"]').attr("content"),
+    $('meta[name="application-name"]').attr("content"),
+    $("h1").first().text(),
+    $("title").text().split(/\s+[|–—-]\s+/)[0],
+  ];
+
+  for (const candidate of candidates) {
+    const value = candidate?.replace(/\s+/g, " ").trim();
+    if (value && value.length >= 2 && value.length <= 120 && !/^(home|welcome)$/i.test(value)) {
+      return value;
+    }
+  }
+  return null;
 }
