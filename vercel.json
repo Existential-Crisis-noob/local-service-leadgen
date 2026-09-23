@@ -1,3 +1,18 @@
 {
-  "buildCommand": "prisma generate && prisma migrate deploy && next build"
+  "services": {
+    "web": {
+      "root": ".",
+      "framework": "nextjs",
+      "buildCommand": "prisma generate && prisma migrate deploy && next build"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": {
+        "type": "service",
+        "service": "web"
+      }
+    }
+  ]
 }
